@@ -22,7 +22,7 @@ IMF = 'Chabrier_300'
 
 # --- open HDF5 file
 
-hf = h5py.File(f'../sample_data/{SPS}_{IMF}_lite.h5', 'r')
+hf = h5py.File(f'{SPS}_{IMF}_lite.h5', 'r')
 
 lam = hf['lam'][:]
 

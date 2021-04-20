@@ -38,19 +38,28 @@ if create_HDF5:
     # --- first of all make a simple copy of the Python structure and save this
 
     # --- create HDF5 file
-    hf = h5py.File(f'{data_dir}/{SPS}/{IMF}/stellar_lite.h5', 'w')
+    hf = h5py.File(f'{data_dir}/{SPS}_{IMF}_lite.h5', 'w')
 
     # --- simply mirror the python data structure
-    for k in p.keys():
+    for k in ['Z','log10age']:
         hf[k] = p[k]
-    #
-    # # --- also create a version where each SED is saved separately
-    # for iZ, Z in enumerate(p['Z']):
-    #     for ia, log10age in enumerate(p['log10age']):
-    #         hf['L_nu'][ia, iZ] = hf['L_nu'][ia, iZ][:10000]
-    #
+
+    lam = p['lam']
+    lam = lam[:10000]
+    lam_rebinned = (lam[0::4] + lam[1::4] + lam[2::4] + lam[3::4])/4
+    hf['lam'] = lam_rebinned
+
+    hf['L_nu'] = np.ones((len(p['log10age']), len(p['Z']), 2500))
+
+    # --- also create a version where each SED is saved separately
+    for iZ, Z in enumerate(p['Z']):
+        for ia, log10age in enumerate(p['log10age']):
+
+            L_nu = p['L_nu'][ia, iZ][:10000]
+            L_nu_rebinned = (L_nu[0::4] + L_nu[1::4] + L_nu[2::4] + L_nu[3::4])/4
+
+            hf['L_nu'][ia, iZ, :] = L_nu_rebinned
+
 
     hf.flush()
     hf.close()
-
-os.system(f'cp {data_dir}/{SPS}/{IMF}/stellar_lite.h5 {data_dir}/{SPS}_{IMF}_lite.h5')

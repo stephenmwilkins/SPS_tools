@@ -29,13 +29,24 @@ print(f"metallicity = {hf['Z'][iZ]}  log10(age/yr)={hf['log10age'][ia]}")
 
 SED1 = hf['L_nu'][ia, iZ]
 
-
 plt.plot(lam, SED1, alpha=0.2, lw=4, c='k')
 
-# --- alternative approach
-SED2 = hf[f"{hf['Z'][iZ]}/{hf['log10age'][ia]}/L_nu"]
+SED1 = SED1[:10000]
+SED1a = (SED1[0::4] + SED1[1::4] + SED1[2::4] + SED1[3::4])/4
+lam = lam[:10000]
+lama = (lam[0::4] + lam[1::4] + lam[2::4] + lam[3::4])/4
+print(SED1a.shape)
 
-plt.plot(lam, SED2, alpha=1, lw=1, c='k')
+
+
+
+plt.plot(lama, SED1a, alpha=1, lw=1, c='k')
+
+#
+# # --- alternative approach
+# SED2 = hf[f"{hf['Z'][iZ]}/{hf['log10age'][ia]}/L_nu"]
+#
+# plt.plot(lam, SED2, alpha=1, lw=1, c='k')
 
 
 plt.show()
