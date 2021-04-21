@@ -26,6 +26,13 @@ hf = h5py.File(f'streamlit/{SPS}_{IMF}_lite.h5', 'r')
 
 lam = hf['lam'][:]
 
+
+
+st.header('Stellar Population Synthesis (SPS) SED viewer')
+
+st.sidebar.markdown('**BPASS v2.2.1**')
+st.sidebar.markdown('**Chabrier 300 IMF**')
+
 iZ = st.sidebar.slider("Metallicity index", min_value=0, max_value=len(hf['Z'])-1, value=5, step=1)
 st.sidebar.text(f"metallicity = {hf['Z'][iZ]}")
 ia = st.sidebar.slider("Age index", min_value=0, max_value=len(hf['log10age'])-1, value=5, step=1)
@@ -49,5 +56,6 @@ ax.set_ylim([16, 22])
 plt.xlabel(r'$\log_{10}(\lambda/\AA)$')
 plt.ylabel(r'$\log_{10}(L_{\nu}/erg\ s^{-1}\ Hz^{-1})$')
 
-
-st.pyplot(fig)
+with st.beta_container():
+    st.empty()
+    st.pyplot(fig)
