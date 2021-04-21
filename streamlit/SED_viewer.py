@@ -26,14 +26,12 @@ hf = h5py.File(f'streamlit/{SPS}_{IMF}_lite.h5', 'r')
 
 lam = hf['lam'][:]
 
-iZ = 8
-ia = 10
-
-
 iZ = st.sidebar.slider("Metallicity index", min_value=0, max_value=len(hf['Z'])-1, value=5, step=1)
 st.sidebar.text(f"metallicity = {hf['Z'][iZ]}")
 ia = st.sidebar.slider("Age index", min_value=0, max_value=len(hf['log10age'])-1, value=5, step=1)
 st.sidebar.text(f"log10(age/yr) = {hf['log10age'][ia]}")
+
+c = mpl.cm.inferno(ia/(len(hf['log10age'])+5))
 
 
 SED = hf['L_nu'][ia, iZ]
@@ -42,7 +40,7 @@ fig, ax = plt.subplots()
 
 x = np.array([-1,1])
 
-ax.plot(np.log10(lam), np.log10(SED))
+ax.plot(np.log10(lam), np.log10(SED), c=c, lw=1)
 
 ax.set_xlim([2.5, 4.0])
 ax.set_ylim([16, 22])
