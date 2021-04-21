@@ -1,0 +1,47 @@
+CO: 0.0
+IMF: ModSalpeter_300
+REF_log10Z: -2.0
+REF_log10age: 6.0
+SPS: BPASSv2.2.1.binary
+T_floor: 100
+Z: !!python/object/apply:numpy.core.multiarray.scalar
+- &id001 !!python/object/apply:numpy.dtype
+  args:
+  - f8
+  - 0
+  - 1
+  state: !!python/tuple
+  - 3
+  - <
+  - null
+  - null
+  - null
+  - -1
+  - -1
+  - 0
+- !!binary |
+  8WjjiLX45D4=
+cloudy_version: C17.00
+covering_factor: 1.0
+d2m: 0.3
+iZ: 0
+ia: 0
+log10Q: !!python/object/apply:numpy.core.multiarray.scalar
+- *id001
+- !!binary |
+  WJC2KM8WSUA=
+log10Q_orig: !!python/object/apply:numpy.core.multiarray.scalar
+- *id001
+- !!binary |
+  Z5LJdM7xSkA=
+log10U_S: !!python/object/apply:numpy.core.multiarray.scalar
+- *id001
+- !!binary |
+  C/OgWbjk/78=
+log10U_S_0: -2.0
+log10n_H: 2.5
+log10radius: -2.0
+output_file: test
+stellar_grid_file: /Users/stephenwilkins/Dropbox/Research/data/SPS/stellar/1.0/BPASSv2.2.1.binary/ModSalpeter_300/stellar.p
+stop_T: 4000
+stop_efrac: -2
