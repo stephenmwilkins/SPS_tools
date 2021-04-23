@@ -1,4 +1,8 @@
 
+
+# --- this demonstrates how to build a Cloudy input file based on my standard set of parameters. There is also the option to run cloudy if you give it the location of the cloudy executable.
+
+
 import sys
 import os
 
@@ -8,21 +12,23 @@ import SPS_tools.cloudy.BuildInput as BuildInput
 
 
 # --- get the default set of parameters
-params = BuildInput.default_params()
+SPS_params, cloudy_params = BuildInput.default_params()
 
 # --- print the default parameters
-for p, param in params.items():
-    print(p, param)
+for parameter_set in [SPS_params, cloudy_params]:
+    for p, param in parameter_set.items():
+        print(p, param)
+
 
 # --- set the input stellar grid file location (will depend on where you put it)
-params['stellar_grid_file'] = f"/Users/stephenwilkins/Dropbox/Research/data/SPS/stellar/1.0/{params['SPS']}/{params['IMF']}/stellar.p"
-
-cinput = BuildInput.build_input(**params)
+SPS_params['stellar_grid_file'] = f"/Users/stephenwilkins/Dropbox/Research/data/SPS/stellar/1.0/{SPS_params['SPS']}/{SPS_params['IMF']}/stellar.p"
 
 
-# strategy = 'simple'
-# data_dir = '/research/astro/flare/data/SPS'
-# output_dir = f'{data_dir}/nebular/CloudyOutputs/{strategy}/{cloudy_version}/{SPS}/{IMF}'
-# output_filename = f'{ia}_{iZ}' # simple
-# output_filename = f'{ia}_{iZ}_{log10n_H}_{log10U_S_0}_{CO}_{d2m}' # full
-# output_file = f'{output_dir}/{output_filename}'
+# --- now build the input file. This automatically saves it using the output_file parameter. In this case this is "test/test".
+cinput = BuildInput.CloudyInput(**SPS_params).build_input(**cloudy_params)
+
+
+# --- automatically run cloudy.
+run_cloudy = False
+if run_cloudy:
+    os.system(f"/Users/stephenwilkins/Dropbox/Research/software/cloudy/c17.01/source/cloudy.exe < {cloudy_params['output_dir']}/{cloudy_params['output_file']}.in")

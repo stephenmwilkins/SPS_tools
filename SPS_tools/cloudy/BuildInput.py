@@ -10,7 +10,9 @@ import yaml
 from . import abundances
 
 
-parameter_names = ['SPS', 'IMF', 'ia', 'iZ', 'cloudy_version', 'log10n_H', 'log10U_S_0', 'CO', 'd2m', 'REF_log10Z', 'REF_log10age', 'log10radius', 'covering_factor', 'stop_T', 'stop_efrac', 'T_floor', 'stellar_grid_file', 'output_file']
+SPS_parameters = ['SPS', 'IMF', 'stellar_grid_file', 'REF_log10Z', 'REF_log10age']
+
+cloudy_parameters = ['ia', 'iZ', 'cloudy_version', 'log10n_H', 'log10U_S_0', 'CO', 'd2m',  'log10radius', 'covering_factor', 'stop_T', 'stop_efrac', 'T_floor', 'output_dir', 'output_file']
 
 
 
@@ -57,128 +59,147 @@ def default_params():
     stellar_grid_file = None
 
     # --- outputs
+
+    output_dir = 'test'
     output_file = 'test'
 
 
     # ---------------------------------------------------
     # --- return a dictionary of these parameters
 
-    params = {}
-    for name in parameter_names:
-        params[name] = locals()[name]
+    SPS_params = {}
+    for name in SPS_parameters:
+        SPS_params[name] = locals()[name]
 
-    return params
+    cloudy_params = {}
+    for name in cloudy_parameters:
+        cloudy_params[name] = locals()[name]
 
-
-
-def build_input(SPS, IMF, ia, iZ, cloudy_version, log10n_H, log10U_S_0, CO, d2m, REF_log10Z, REF_log10age, log10radius, covering_factor, stop_T, stop_efrac, T_floor, stellar_grid_file, output_file):
-
-    # --- this function builds the cloudy input file
+    return SPS_params, cloudy_params
 
 
 
-    # --- read in pure stellar grid
+class CloudyInput:
 
-    if stellar_grid_file.split('.')[-1] == 'p':
-        stellar_grid = pickle.load(open(stellar_grid_file,'rb'))
-        lam = stellar_grid['lam']
+    def __init__(self, SPS, IMF, stellar_grid_file, REF_log10Z, REF_log10age):
 
-    if stellar_grid_file.split('.')[-1] == 'h5':
-        # stellar_grid = pickle.load(open(stellar_grid_file,'rb'))
-        lam = stellar_grid['lam']
+        # --- read in pure stellar grid
 
+        if stellar_grid_file.split('.')[-1] == 'p':
+            self.stellar_grid = pickle.load(open(stellar_grid_file,'rb'))
+            self.lam = self.stellar_grid['lam']
 
-    # --- determine the metallicity and age indicies for the reference metallicity and age
-
-    iZ_REF = (np.abs(stellar_grid['log10Z'] - (REF_log10Z))).argmin()
-    ia_REF = (np.abs(stellar_grid['log10age'] - (REF_log10age))).argmin()
-
-    # --- calculate the LyC flux for the reference metallicity and age SED
-    log10Q_REF = measure_log10Q(lam, stellar_grid['L_nu'][ia_REF, iZ_REF])
-
-    # --- calculate the ionising photon luminosity for the target SED
-    log10Q_orig = measure_log10Q(lam, stellar_grid['L_nu'][ia, iZ])
-
-    # --- calculate the actual ionisation parameter for the target SED. Only when the target SED == reference SED will log10U_S = log10U_S_0
-    log10U_S = log10U_S_0 + (log10Q_orig - log10Q_REF)/3.
-
-    # --- now determine the actual ionising photon luminosity for the target SED. This is the normalising input to CLOUDY
-    log10Q = determine_log10Q(log10U_S, log10n_H)
-
-    # --- convert the SED to the CLOUDY format. The normalisation doesn't matter as that is handled by log10Q above
-    CLOUDY_SED = create_CLOUDY_SED(lam, stellar_grid['L_nu'][ia, iZ])
-
-    # --- get metallicity
-    Z = stellar_grid['Z'][iZ]
-
-    # --- determine elemental abundances for given Z, CO, d2m, with depletion taken into account
-    a = abundances.abundances(Z, CO, d2m)
-
-    # --- determine elemental abundances for given Z, CO, d2m, WITHOUT depletion taken into account
-    a_nodep =  abundances.abundances(Z, CO, 0.0) # --- determine abundances for no depletion
+        # if stellar_grid_file.split('.')[-1] == 'h5':
+        #     self.stellar_grid = pickle.load(open(stellar_grid_file,'rb'))
+        #     self.lam = stellar_grid['lam']
 
 
-    # ----- start CLOUDY input file (as a list)
-    cinput = []
+        # --- determine the metallicity and age indicies for the reference metallicity and age
+        iZ_REF = (np.abs(self.stellar_grid['log10Z'] - (REF_log10Z))).argmin()
+        ia_REF = (np.abs(self.stellar_grid['log10age'] - (REF_log10age))).argmin()
 
-    # --- Define the incident radiation field shape
-    cinput.append('interpolate{      10.0000     -99.0000}\n')
-    for i1 in range(int(len(CLOUDY_SED)/5)): cinput.append('continue'+''.join(CLOUDY_SED[i1*5:(i1+1)*5])+'\n')
-
-    # --- Define the chemical composition
-    for ele in ['He'] + abundances.metals:
-        cinput.append('element abundance '+abundances.name[ele]+' '+str(a[ele])+'\n')
-
-    # cinput.append('element off limit -7') # should speed up the code
-
-    # --- add graphite and silicate grains
-    # graphite, scale by total C abundance relatve to ISM
-    scale = 10**a_nodep['C']/2.784000e-04
-    cinput.append(f'grains Orion graphite {scale}'+'\n')
-    # silicate, scale by total Si abundance relatve to ISM NOTE: silicates also rely on other elements.
-    scale = 10**a_nodep['Si']/3.280000e-05
-    cinput.append(f'grains Orion silicate {scale}'+'\n')
+        # --- calculate the LyC flux for the reference metallicity and age SED
+        self.log10Q_REF = measure_log10Q(self.lam, self.stellar_grid['L_nu'][ia_REF, iZ_REF])
 
 
-    # --- Define the luminosity
-    cinput.append(f'Q(H) {log10Q}\n')
-
-    # --- Define the geometry
-
-    cinput.append(f'hden '+str(log10n_H)+' log constant density\n')
-    cinput.append(f'radius {log10radius} parsecs\n')
-    cinput.append(f'sphere\n')
-    cinput.append(f'covering factor {covering_factor} linear\n')
-
-    # --- Processing commands
-
-    cinput.append(f'iterate to convergence\n')
-    cinput.append(f'set temperature floor {T_floor} linear\n')
-    cinput.append(f'stop temperature {stop_T}K\n')
-    cinput.append(f'stop efrac {stop_efrac}\n')
-
-    # --- define output filename
-
-    cinput.append(f'save last continuum "{output_file}.cont" units Angstroms no clobber\n')
-    cinput.append(f'save last lines, array "{output_file}.lines" units Angstroms no clobber\n')
-    cinput.append(f'save overview "{output_file}.ovr" last\n')
-
-    # --- write input file
-    open(f'{output_file}.in','w').writelines(cinput)
+        self.SPS_params = {}
+        for name in SPS_parameters:
+            self.SPS_params[name] = locals()[name]
 
 
-    # --- make a dictionary of the parameters including derived parameters
+    def build_input(self, ia, iZ, cloudy_version, log10n_H, log10U_S_0, CO, d2m, log10radius, covering_factor, stop_T, stop_efrac, T_floor, output_dir, output_file):
 
-    derived_parameter_names = ['log10Q_orig', 'log10U_S', 'log10Q', 'Z']
 
-    params = {}
-    for name in parameter_names + derived_parameter_names:
-        params[name] = locals()[name]
+        # --- calculate the ionising photon luminosity for the target SED
+        log10Q_orig = measure_log10Q(self.lam, self.stellar_grid['L_nu'][ia, iZ])
 
-    # --- write parameter file, including derived parameters
-    yaml.dump(params, open(f'{output_file}.yaml','w'))
+        # --- calculate the actual ionisation parameter for the target SED. Only when the target SED == reference SED will log10U_S = log10U_S_0
+        log10U_S = log10U_S_0 + (log10Q_orig - self.log10Q_REF)/3.
 
-    return cinput
+        # --- now determine the actual ionising photon luminosity for the target SED. This is the normalising input to CLOUDY
+        log10Q = determine_log10Q(log10U_S, log10n_H)
+
+        # --- convert the SED to the CLOUDY format. The normalisation doesn't matter as that is handled by log10Q above
+        CLOUDY_SED = create_CLOUDY_SED(self.lam, self.stellar_grid['L_nu'][ia, iZ])
+
+        # --- get metallicity
+        Z = self.stellar_grid['Z'][iZ]
+
+        # --- determine elemental abundances for given Z, CO, d2m, with depletion taken into account
+        a = abundances.abundances(Z, CO, d2m)
+
+        # --- determine elemental abundances for given Z, CO, d2m, WITHOUT depletion taken into account
+        a_nodep =  abundances.abundances(Z, CO, 0.0) # --- determine abundances for no depletion
+
+
+        # ----- start CLOUDY input file (as a list)
+        cinput = []
+
+        # --- Define the incident radiation field shape
+        cinput.append('interpolate{      10.0000     -99.0000}\n')
+        for i1 in range(int(len(CLOUDY_SED)/5)): cinput.append('continue'+''.join(CLOUDY_SED[i1*5:(i1+1)*5])+'\n')
+
+        # --- Define the chemical composition
+        for ele in ['He'] + abundances.metals:
+            cinput.append('element abundance '+abundances.name[ele]+' '+str(a[ele])+'\n')
+
+        # cinput.append('element off limit -7') # should speed up the code
+
+        # --- add graphite and silicate grains
+        # graphite, scale by total C abundance relatve to ISM
+        scale = 10**a_nodep['C']/2.784000e-04
+        cinput.append(f'grains Orion graphite {scale}'+'\n')
+        # silicate, scale by total Si abundance relatve to ISM NOTE: silicates also rely on other elements.
+        scale = 10**a_nodep['Si']/3.280000e-05
+        cinput.append(f'grains Orion silicate {scale}'+'\n')
+
+
+        # --- Define the luminosity
+        cinput.append(f'Q(H) {log10Q}\n')
+
+        # --- Define the geometry
+
+        cinput.append(f'hden '+str(log10n_H)+' log constant density\n')
+        cinput.append(f'radius {log10radius} parsecs\n')
+        cinput.append(f'sphere\n')
+        cinput.append(f'covering factor {covering_factor} linear\n')
+
+        # --- Processing commands
+
+        cinput.append(f'iterate to convergence\n')
+        cinput.append(f'set temperature floor {T_floor} linear\n')
+        cinput.append(f'stop temperature {stop_T}K\n')
+        cinput.append(f'stop efrac {stop_efrac}\n')
+
+        # --- define output filename
+
+        cinput.append(f'save last continuum "{output_dir}/{output_file}.cont" units Angstroms no clobber\n')
+        cinput.append(f'save last lines, array "{output_dir}/{output_file}.lines" units Angstroms no clobber\n')
+        cinput.append(f'save overview "{output_dir}/{output_file}.ovr" last\n')
+
+        # --- write input file
+        open(f'{output_dir}/{output_file}.in','w').writelines(cinput)
+
+
+        # --- make a dictionary of the parameters including derived parameters
+
+        derived_parameter = ['log10Q_orig', 'log10U_S', 'log10Q', 'Z']
+
+        params = {}
+        for name in cloudy_parameters + derived_parameter:
+
+            if type(locals()[name]) != int:
+                if type(locals()[name]) != str:
+                    params[name] = float(np.round(locals()[name],2))
+            else:
+                params[name] = locals()[name]
+
+
+
+        # --- write parameter file, including derived parameters
+        yaml.dump({**params, **self.SPS_params}, open(f'{output_dir}/{output_file}.yaml','w'))
+
+        return cinput
 
 
 

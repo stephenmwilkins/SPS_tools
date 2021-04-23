@@ -2021,6 +2021,6 @@ iterate to convergence
 set temperature floor 100 linear
 stop temperature 4000K
 stop efrac -2
-save last continuum "test.cont" units Angstroms no clobber
-save last lines, array "test.lines" units Angstroms no clobber
-save overview "test.ovr" last
+save last continuum "test/test.cont" units Angstroms no clobber
+save last lines, array "test/test.lines" units Angstroms no clobber
+save overview "test/test.ovr" last
